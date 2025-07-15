@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <title>Gestión de Usuarios</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #f4f6f9;
+      padding: 20px;
+    }
+
+    h1 {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      color: #2c3e50;
+    }
+
+    h1::before {
+      content: "\1F464";
+    }
+
+    .filtros, .formulario {
+      margin: 20px 0;
+    }
+
+    input, select, button {
+      padding: 8px;
+      margin: 5px 10px 5px 0;
+      border-radius: 5px;
+      border: 1px solid #ccc;
+    }
+
+    button {
+      background-color: #0077cc;
+      color: white;
+      border: none;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background-color: #005fa3;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 10px;
+    }
+
+    th, td {
+      padding: 12px;
+      border: 1px solid #ddd;
+      text-align: left;
+    }
+
+    th {
+      background-color: #0077cc;
+      color: white;
+    }
+
+    tr:nth-child(even) {
+      background-color: #f9f9f9;
+    }
+
+    .volver {
+      margin-top: 20px;
+      display: inline-block;
+      background-color: #0077cc;
+      color: white;
+      padding: 10px 20px;
+      border-radius: 8px;
+      text-decoration: none;
+    }
+
+    .volver:hover {
+      background-color: #005fa3;
+    }
+  </style>
+</head>
+<body>
+  <h1>Gestión de Usuarios</h1>
+
+  <div class="filtros">
+    <input type="text" id="filtroNombre" placeholder="Buscar por nombre...">
+    <select id="filtroArea">
+      <option value="">-- Filtrar por área --</option>
+      <option value="Operaciones">Operaciones</option>
+      <option value="E-Commerce">E-Commerce</option>
+      <option value="Demanda">Demanda</option>
+    </select>
+  </div>
+
+  <div class="formulario">
+    <h3>Crear nuevo usuario</h3>
+    <input type="text" id="nombre" placeholder="Nombre">
+    <input type="text" id="apellido" placeholder="Apellido">
+    <input type="text" id="dni" placeholder="DNI">
+    <input type="text" id="username" placeholder="Usuario">
+    <input type="email" id="email" placeholder="Correo">
+    <input type="password" id="password" placeholder="Contraseña">
+    <select id="rol">
+      <option value="admin">Admin</option>
+      <option value="analyst">Analyst</option>
+    </select>
+    <select id="area">
+      <option value="Operaciones">Operaciones</option>
+      <option value="E-Commerce">E-Commerce</option>
+      <option value="Demanda">Demanda</option>
+    </select>
+    <button onclick="crearUsuario()">Registrar</button>
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Nombre</th>
+        <th>Usuario</th>
+        <th>Email</th>
+        <th>Rol</th>
+        <th>Área</th>
+        <th>Contraseña</th>
+      </tr>
+    </thead>
+    <tbody id="tabla-usuarios">
+      <tr><td colspan="6">Cargando usuarios...</td></tr>
+    </tbody>
+  </table>
+
+  <a href="dashboard.html" class="volver">⬅ Volver al dashboard</a>
+
+  <script>
+    const usuario = JSON.parse(localStorage.getItem("usuario") || "{}");
+    if (usuario.role !== "admin") {
+      alert("Acceso restringido. Solo administradores pueden ver esta sección.");
+      window.location.href = "login.html";
+    }
+
+    let usuarios = [];
+
+    function cargarUsuarios() {
+      fetch("http://localhost:8000/api/usuarios")
+        .then(res => res.json())
+        .then(data => {
+          usuarios = data.map(u => ({
+            id: u.user_id,
+            nombre: u.first_name + " " + u.last_name,
+            username: u.username,
+            correo: u.email,
+            rol: u.role,
+            area: u.area
+          }));
+          renderTabla(usuarios);
+        })
+        .catch(err => console.error("Error cargando usuarios:", err));
+    }
+
+    function renderTabla(data) {
+      const tbody = document.getElementById("tabla-usuarios");
+      tbody.innerHTML = "";
+      if (data.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="6">No hay usuarios que coincidan.</td></tr>`;
+        return;
+      }
+      data.forEach(u => {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td>${u.nombre}</td>
+          <td>${u.username}</td>
+          <td>${u.correo}</td>
+          <td>${u.rol}</td>
+          <td>${u.area}</td>
+          <td><button onclick="cambiarPassword(${u.id})">Cambiar</button></td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function filtrar() {
+      const texto = document.getElementById("filtroNombre").value.toLowerCase();
+      const area = document.getElementById("filtroArea").value;
+      const filtrados = usuarios.filter(u =>
+        u.nombre.toLowerCase().includes(texto) &&
+        (area === "" || u.area === area)
+      );
+      renderTabla(filtrados);
+    }
+
+    function crearUsuario() {
+      const data = {
+        first_name: document.getElementById("nombre").value,
+        last_name: document.getElementById("apellido").value,
+        dni: document.getElementById("dni").value,
+        username: document.getElementById("username").value,
+        email: document.getElementById("email").value,
+        password: document.getElementById("password").value,
+        role: document.getElementById("rol").value,
+        area: document.getElementById("area").value,
+      };
+
+      fetch("http://localhost:8000/api/usuarios", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      })
+      .then(res => res.json())
+      .then(res => {
+        alert(res.mensaje || "Usuario creado.");
+        cargarUsuarios();
+      })
+      .catch(err => alert("Error al crear usuario."));
+    }
+
+    function cambiarPassword(userId) {
+      const nueva = prompt("Nueva contraseña:");
+      if (!nueva) return;
+      fetch(`http://localhost:8000/api/usuarios/${userId}/password`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password: nueva }),
+      })
+      .then(res => res.json())
+      .then(res => alert(res.mensaje || "Contraseña actualizada"))
+      .catch(err => alert("Error al cambiar contraseña"));
+    }
+
+    document.getElementById("filtroNombre").addEventListener("input", filtrar);
+    document.getElementById("filtroArea").addEventListener("change", filtrar);
+
+    cargarUsuarios();
+  </script>
+</body>
+</html>
