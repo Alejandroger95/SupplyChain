@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Detalle del Pedido</title>
+  <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+  <style>
+    body {
+      padding: 20px;
+      background-color: #f8f9fa;
+    }
+    table {
+      margin-top: 20px;
+    }
+    th, td {
+      vertical-align: middle !important;
+    }
+  </style>
+</head>
+<body>
+  <h4><strong>Detalle del Pedido</strong></h4>
+
+  <div class="form-group">
+    <input type="text" id="searchInput" class="form-control" placeholder="Buscar por grado, producto, nivel educativo o mercado">
+  </div>
+
+  <div class="mb-2">
+    <button onclick="filtrarPedidos()" class="btn btn-primary">Filtrar</button>
+    <button onclick="marcarTodo()" class="btn btn-success">Marcar todo</button>
+    <button onclick="desmarcarTodo()" class="btn btn-danger">Desmarcar todo</button>
+    <button onclick="descargarSeleccionados()" class="btn btn-secondary">Descargar Seleccionados</button>
+  </div>
+
+  <div class="table-responsive">
+    <table class="table table-bordered table-striped">
+      <thead class="thead-light">
+        <tr>
+          <th><input type="checkbox" id="checkAll" onclick="toggleTodos()"></th>
+          <th>Mercado</th>
+          <th>Línea de Negocio</th>
+          <th>Nivel Educativo</th>
+          <th>Grado</th>
+          <th>Cod Producto</th>
+          <th>Producto</th>
+          <th>Descuento</th>
+          <th>Población</th>
+          <th>TC %</th>
+          <th>Cantidad</th>
+        </tr>
+      </thead>
+      <tbody id="pedidoBody">
+        <tr><td colspan="11">Cargando pedidos...</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <script>
+    // Extraer parámetros de la URL
+    function getParam(nombre) {
+      return new URLSearchParams(window.location.search).get(nombre);
+    }
+
+    const codigo = getParam("colegio");
+    const nombrecolegio = getParam("nombre");
+    const canal = getParam("canal");
+    const cliente = getParam("cliente");
+    const codcliente = getParam("codcliente");
+    const vendedor = getParam("vendedor");
+    const codvendedor = getParam("codvendedor");
+    const idprocess = getParam("idprocess");
+
+    let pedidosOriginal = [];
+
+    function toggleTodos() {
+      const checked = document.getElementById("checkAll").checked;
+      document.querySelectorAll('.filaPedido input[type="checkbox"]').forEach(cb => cb.checked = checked);
+    }
+
+    function marcarTodo() {
+      document.querySelectorAll('.filaPedido input[type="checkbox"]').forEach(cb => cb.checked = true);
+    }
+
+    function desmarcarTodo() {
+      document.querySelectorAll('.filaPedido input[type="checkbox"]').forEach(cb => cb.checked = false);
+    }
+
+    function filtrarPedidos() {
+      const filtro = document.getElementById("searchInput").value.toLowerCase();
+      const body = document.getElementById("pedidoBody");
+      body.innerHTML = "";
+
+      const filtrados = pedidosOriginal.filter(p =>
+        Object.values(p).some(v =>
+          (v || "").toString().toLowerCase().includes(filtro)
+        )
+      );
+
+      if (filtrados.length === 0) {
+        body.innerHTML = '<tr><td colspan="11">No se encontraron resultados.</td></tr>';
+        return;
+      }
+
+      filtrados.forEach((p, i) => {
+        const fila = `<tr class="filaPedido">
+          <td><input type="checkbox" value="${i}"></td>
+          <td>${p.Mercado}</td>
+          <td>${p.Linea_Negocio}</td>
+          <td>${p.NivelEducativo}</td>
+          <td>${p.Grado}</td>
+          <td>${p.Codigo_Nav_Santillana}</td>
+          <td>${p.Producto}</td>
+          <td>${p.Descuento}</td>
+          <td>${p.Poblacion}</td>
+          <td>${p.Tasa_Compra}</td>
+          <td>${p.Cantidad_Solicitada}</td>
+        </tr>`;
+        body.innerHTML += fila;
+      });
+    }
+
+    function descargarSeleccionados() {
+      const seleccionados = Array.from(document.querySelectorAll('.filaPedido input[type="checkbox"]:checked'))
+        .map(cb => pedidosOriginal[parseInt(cb.value)]);
+
+      if (seleccionados.length === 0) {
+        alert("Selecciona al menos un ítem para descargar.");
+        return;
+      }
+
+      const payload = {
+        pedidos: seleccionados,
+        idprocess,
+        codcliente,
+        cliente,
+        codvendedor,
+        vendedor
+      };
+
+      fetch("http://localhost:8000/api/descargar_placeholder", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      })
+      .then(resp => {
+        if (!resp.ok) throw new Error("Error al generar archivo.");
+        return resp.blob();
+      })
+      .then(blob => {
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = "pedido_santillana.zip";
+        a.click();
+      })
+      .catch(err => alert("Error: " + err.message));
+    }
+
+    function cargarPedidos() {
+      if (!codigo || !canal) {
+        document.getElementById("pedidoBody").innerHTML = '<tr><td colspan="11">Faltan parámetros de búsqueda.</td></tr>';
+        return;
+      }
+
+      fetch(`http://localhost:8000/api/pedidosb2b?codigo_colegio=${codigo}&canal=${canal}`)
+        .then(response => {
+          if (!response.ok) throw new Error("Error al cargar pedidos.");
+          return response.json();
+        })
+        .then(data => {
+          pedidosOriginal = data;
+          filtrarPedidos();
+        })
+        .catch(err => {
+          document.getElementById("pedidoBody").innerHTML = `<tr><td colspan="11">Error al cargar pedidos.</td></tr>`;
+        });
+    }
+
+    window.onload = cargarPedidos;
+  </script>
+</body>
+</html>

@@ -131,7 +131,7 @@
             return { ...p, zona };
           });
 
-        filtrarPedidos(); // Carga inicial
+        filtrarPedidos();
       })
       .catch((error) => {
         document.getElementById("lista-pedidos").innerHTML =
@@ -167,35 +167,42 @@
       const tbody = document.getElementById("lista-pedidos");
       tbody.innerHTML = "";
 
-      if (pedidos.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="8" class="mensaje">No hay pedidos disponibles.</td></tr>`;
-        return;
-      }
-
       pedidos.forEach(p => {
         const ejecutado = String(p.NMEXECUTEDACTION).trim() === "1";
+        const codcolegio = p.T0__CCO_0;
+        const nombrecolegio = p.T0__NCO_1;
+        const canal = p.T0__CDV_0;
+        const codcliente = p.T0__CODCLI_0;
+        const cliente = p.T0__RAZ_1;
+        const vendedor = p.T0__NDS_1;
+        const codvendedor = p.T0__CSO_0;
+        const idprocess = p.IDPROCESS;
 
         const fila = document.createElement("tr");
         fila.innerHTML = `
-          <td>${p.T0__CODCLI_0}</td>
-          <td>${p.T0__RAZ_1}</td>
-          <td>${p.T0__CDV_0}</td>
-          <td>${p.T0__NDS_1}</td>
-          <td>${p.IDPROCESS ? 'OPE_HDC - ' + p.IDPROCESS : 'N/A'}</td>
+          <td>${codcliente}</td>
+          <td>${cliente}</td>
+          <td>${canal}</td>
+          <td>${vendedor}</td>
+          <td>${idprocess ? 'OPE_HDC - ' + idprocess : 'N/A'}</td>
           <td class="${ejecutado ? 'estado-pendiente' : 'estado-ejecutado'}">
             ${ejecutado ? 'Pendiente' : 'Ejecutado'}
           </td>
           <td>${p.zona}</td>
-          <td><button class="boton-generar" onclick="generarPedido('${p.IDPROCESS}')">Generar</button></td>
+          <td>
+            <button class="boton-generar" onclick="generarPedido(
+              '${codcolegio}', '${nombrecolegio}', '${canal}', '${vendedor}', '${idprocess}', '${codcliente}', '${cliente}', '${codvendedor}'
+            )">Generar</button>
+          </td>
         `;
 
         tbody.appendChild(fila);
       });
     }
 
-    function generarPedido(id) {
-      alert("Generando pedido para ID: " + id);
-      // Aquí puedes agregar tu lógica para enviar un POST, abrir modal, redirigir, etc.
+    function generarPedido(codcolegio, nombrecolegio, canal, vendedor, idprocess, codcliente, cliente, codvendedor) {
+      const url = `detalle_pedido.html?colegio=${encodeURIComponent(codcolegio)}&nombre=${encodeURIComponent(nombrecolegio)}&canal=${encodeURIComponent(canal)}&vendedor=${encodeURIComponent(vendedor)}&idprocess=${encodeURIComponent(idprocess)}&codcliente=${encodeURIComponent(codcliente)}&cliente=${encodeURIComponent(cliente)}&codvendedor=${encodeURIComponent(codvendedor)}`;
+      window.location.href = url;
     }
   </script>
 </body>
