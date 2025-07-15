@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <title>Generar Primer Pedido</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #f4f6f9;
+      padding: 20px;
+    }
+
+    h1 {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      color: #222;
+    }
+
+    h1::before {
+      content: "📦";
+    }
+
+    input, select {
+      padding: 8px;
+      margin-right: 10px;
+      border-radius: 5px;
+      border: 1px solid #ccc;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 15px;
+    }
+
+    th {
+      background-color: #e5e5e5;
+      padding: 10px;
+      text-align: left;
+    }
+
+    td {
+      background-color: #fff;
+      padding: 10px;
+      border-bottom: 1px solid #ddd;
+    }
+
+    .estado-ejecutado {
+      color: green;
+      font-weight: bold;
+    }
+
+    .estado-pendiente {
+      color: red;
+      font-weight: bold;
+    }
+
+    .mensaje {
+      text-align: center;
+      padding: 20px;
+      color: #888;
+    }
+
+    tr:hover {
+      background-color: #f9f9f9;
+    }
+
+    .boton-generar {
+      padding: 6px 12px;
+      background-color: #007bff;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+
+    .boton-generar:hover {
+      background-color: #0056b3;
+    }
+  </style>
+</head>
+<body>
+  <h1>Generar Primer Pedido</h1>
+
+  <input type="text" id="buscador" placeholder="Buscar colegio o canal..." />
+  <select id="filtroEstado">
+    <option value="">-- Filtrar por estado --</option>
+    <option value="pendientes">Pendientes</option>
+    <option value="ejecutados">Ejecutados</option>
+  </select>
+  <select id="filtroZona">
+    <option value="">-- Filtrar por zona --</option>
+    <option value="Lima">Lima</option>
+    <option value="Provincia">Provincia</option>
+  </select>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Código Colegio</th>
+        <th>Nombre Colegio</th>
+        <th>Canal</th>
+        <th>Vendedor</th>
+        <th>ID Pedido</th>
+        <th>Estado</th>
+        <th>Zona</th>
+        <th>Acción</th>
+      </tr>
+    </thead>
+    <tbody id="lista-pedidos">
+      <tr><td colspan="8" class="mensaje">Cargando pedidos...</td></tr>
+    </tbody>
+  </table>
+
+  <script>
+    let todosLosPedidos = [];
+
+    fetch("http://localhost:8000/api/pedidos")
+      .then((res) => res.json())
+      .then((data) => {
+        todosLosPedidos = data
+          .filter(p =>
+            p.NMSTRUCT === "Generar primer pedido" &&
+            ["COLEGIO", "DISTRIBUIDOR"].includes(p.T0__CDV_0)
+          )
+          .map(p => {
+            const dpto = (p.T0__DTO_1 || "").toUpperCase();
+            const zona = (dpto.includes("LIMA") || dpto.includes("CALLAO")) ? "Lima" : "Provincia";
+            return { ...p, zona };
+          });
+
+        filtrarPedidos(); // Carga inicial
+      })
+      .catch((error) => {
+        document.getElementById("lista-pedidos").innerHTML =
+          `<tr><td colspan="8" class="mensaje">Error al cargar los pedidos.</td></tr>`;
+        console.error("Error:", error);
+      });
+
+    document.getElementById("buscador").addEventListener("input", filtrarPedidos);
+    document.getElementById("filtroEstado").addEventListener("change", filtrarPedidos);
+    document.getElementById("filtroZona").addEventListener("change", filtrarPedidos);
+
+    function filtrarPedidos() {
+      const texto = document.getElementById("buscador").value.toLowerCase();
+      const filtroEstado = document.getElementById("filtroEstado").value;
+      const filtroZona = document.getElementById("filtroZona").value;
+
+      const filtrados = todosLosPedidos.filter(p => {
+        const textoFiltra = `${p.T0__CODCLI_0} ${p.T0__RAZ_1} ${p.T0__CDV_0}`.toLowerCase();
+        const ejecutado = String(p.NMEXECUTEDACTION).trim() === "1";
+        const coincideTexto = textoFiltra.includes(texto);
+
+        if (filtroEstado === "ejecutados" && ejecutado) return false;
+        if (filtroEstado === "pendientes" && !ejecutado) return false;
+        if (filtroZona && p.zona.toLowerCase() !== filtroZona.toLowerCase()) return false;
+
+        return coincideTexto;
+      });
+
+      renderPedidos(filtrados);
+    }
+
+    function renderPedidos(pedidos) {
+      const tbody = document.getElementById("lista-pedidos");
+      tbody.innerHTML = "";
+
+      if (pedidos.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="8" class="mensaje">No hay pedidos disponibles.</td></tr>`;
+        return;
+      }
+
+      pedidos.forEach(p => {
+        const ejecutado = String(p.NMEXECUTEDACTION).trim() === "1";
+
+        const fila = document.createElement("tr");
+        fila.innerHTML = `
+          <td>${p.T0__CODCLI_0}</td>
+          <td>${p.T0__RAZ_1}</td>
+          <td>${p.T0__CDV_0}</td>
+          <td>${p.T0__NDS_1}</td>
+          <td>${p.IDPROCESS ? 'OPE_HDC - ' + p.IDPROCESS : 'N/A'}</td>
+          <td class="${ejecutado ? 'estado-pendiente' : 'estado-ejecutado'}">
+            ${ejecutado ? 'Pendiente' : 'Ejecutado'}
+          </td>
+          <td>${p.zona}</td>
+          <td><button class="boton-generar" onclick="generarPedido('${p.IDPROCESS}')">Generar</button></td>
+        `;
+
+        tbody.appendChild(fila);
+      });
+    }
+
+    function generarPedido(id) {
+      alert("Generando pedido para ID: " + id);
+      // Aquí puedes agregar tu lógica para enviar un POST, abrir modal, redirigir, etc.
+    }
+  </script>
+</body>
+</html>

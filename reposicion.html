@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <title>Reposición de Pedido</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #f4f6f9;
+      padding: 20px;
+    }
+    h1 {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      color: #222;
+    }
+    h1::before {
+      content: "\1F4E6";
+    }
+    input, select {
+      padding: 8px;
+      margin-right: 10px;
+      border-radius: 5px;
+      border: 1px solid #ccc;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 15px;
+    }
+    th {
+      background-color: #e5e5e5;
+      padding: 10px;
+      text-align: left;
+    }
+    td {
+      background-color: #fff;
+      padding: 10px;
+      border-bottom: 1px solid #ddd;
+    }
+    .mensaje {
+      text-align: center;
+      padding: 20px;
+      color: #888;
+    }
+    tr:hover {
+      background-color: #f1f1f1;
+    }
+    button.generar {
+      padding: 6px 12px;
+      background-color: #007acc;
+      border: none;
+      color: white;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <h1>Reposición de Pedido</h1>
+  <input type="text" id="buscador" placeholder="Buscar colegio, ID o solicitante..." />
+  <select id="filtroZona">
+    <option value="">-- Filtrar por zona --</option>
+    <option value="Lima">Lima</option>
+    <option value="Provincia">Provincia</option>
+  </select>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Código Colegio</th>
+        <th>Nombre Colegio</th>
+        <th>Solicitante</th>
+        <th>ID Pedido</th>
+        <th>Canal</th>
+        <th>Zona</th>
+        <th>Acción</th>
+      </tr>
+    </thead>
+    <tbody id="lista-reposicion">
+      <tr><td colspan="7" class="mensaje">Cargando datos...</td></tr>
+    </tbody>
+  </table>
+
+  <script>
+    let datosReposicion = [];
+
+    fetch("http://localhost:8000/api/reposiciones")
+      .then(res => res.json())
+      .then(data => {
+        datosReposicion = data.map(p => {
+          const dpto = (p.T0__DPTOE_1 || "").toUpperCase();
+          const zona = (dpto.includes("LIMA") || dpto.includes("CALLAO")) ? "Lima" : "Provincia";
+          return { ...p, zona };
+        });
+        filtrarReposicion();
+      })
+      .catch(err => {
+        document.getElementById("lista-reposicion").innerHTML = `<tr><td colspan="7" class="mensaje">Error al cargar los datos.</td></tr>`;
+        console.error("Error cargando reposiciones:", err);
+      });
+
+    document.getElementById("buscador").addEventListener("input", filtrarReposicion);
+    document.getElementById("filtroZona").addEventListener("change", filtrarReposicion);
+
+    function filtrarReposicion() {
+      const texto = document.getElementById("buscador").value.toLowerCase();
+      const zonaSeleccionada = document.getElementById("filtroZona").value;
+
+      const filtrados = datosReposicion.filter(p => {
+        const contenido = `${p.T0__CCL_1} ${p.T0__NDC_1} ${p.IDPROCESS} ${p.T0__NOMSOL_1}`.toLowerCase();
+        const coincideTexto = contenido.includes(texto);
+        const coincideZona = !zonaSeleccionada || p.zona === zonaSeleccionada;
+        return coincideTexto && coincideZona;
+      });
+
+      renderReposiciones(filtrados);
+    }
+
+    function renderReposiciones(data) {
+      const tbody = document.getElementById("lista-reposicion");
+      tbody.innerHTML = "";
+      if (data.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="7" class="mensaje">No hay coincidencias.</td></tr>`;
+        return;
+      }
+      data.forEach(p => {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td>${p.T0__CCL_1}</td>
+          <td>${p.T0__NDC_1}</td>
+          <td>${p.T0__NOMSOL_1}</td>
+          <td>${p.IDPROCESS}</td>
+          <td>${p.T0__CDV_1}</td>
+          <td>${p.zona}</td>
+          <td><button class="generar" onclick="alert('Generar para: ${p.IDPROCESS}')">Generar</button></td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+  </script>
+</body>
+</html>
