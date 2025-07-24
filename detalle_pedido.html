@@ -15,10 +15,19 @@
     th, td {
       vertical-align: middle !important;
     }
+    #infoPedido {
+      margin-top: -10px;
+      margin-bottom: 20px;
+      font-size: 14px;
+      color: #555;
+    }
   </style>
 </head>
 <body>
   <h4><strong>Detalle del Pedido</strong></h4>
+
+  <!-- ✅ INFO PEDIDO VISUAL -->
+  <div id="infoPedido"></div>
 
   <div class="form-group">
     <input type="text" id="searchInput" class="form-control" placeholder="Buscar por grado, producto, nivel educativo o mercado">
@@ -55,7 +64,6 @@
   </div>
 
   <script>
-    // Extraer parámetros de la URL
     function getParam(nombre) {
       return new URLSearchParams(window.location.search).get(nombre);
     }
@@ -68,6 +76,10 @@
     const vendedor = getParam("vendedor");
     const codvendedor = getParam("codvendedor");
     const idprocess = getParam("idprocess");
+
+    // ✅ MOSTRAR INFO PEDIDO VISUAL
+    document.getElementById("infoPedido").innerText = 
+      `OPE: ${idprocess || '-'} | CÓDIGO: ${codigo || '-'} | COLEGIO: ${nombrecolegio || '-'} | CLIENTE: ${cliente || '-'}`;
 
     let pedidosOriginal = [];
 

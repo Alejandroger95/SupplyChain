@@ -105,6 +105,7 @@
         <th>Vendedor</th>
         <th>ID Pedido</th>
         <th>Estado</th>
+        <th>Departamento</th>
         <th>Zona</th>
         <th>Acción</th>
       </tr>
@@ -184,10 +185,11 @@
           <td>${cliente}</td>
           <td>${canal}</td>
           <td>${vendedor}</td>
-          <td>${idprocess ? 'OPE_HDC - ' + idprocess : 'N/A'}</td>
+          <td>${idprocess || 'N/A'}</td>
           <td class="${ejecutado ? 'estado-pendiente' : 'estado-ejecutado'}">
             ${ejecutado ? 'Pendiente' : 'Ejecutado'}
           </td>
+          <td>${p.T0__DTO_1 || '-'}</td>
           <td>${p.zona}</td>
           <td>
             <button class="boton-generar" onclick="generarPedido(
