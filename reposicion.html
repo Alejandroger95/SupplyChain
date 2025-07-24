@@ -10,57 +10,86 @@
       background-color: #f4f6f9;
       padding: 20px;
     }
+
     h1 {
       display: flex;
       align-items: center;
       gap: 10px;
       color: #222;
     }
+
     h1::before {
-      content: "\1F4E6";
+      content: "📦";
     }
+
     input, select {
       padding: 8px;
       margin-right: 10px;
       border-radius: 5px;
       border: 1px solid #ccc;
     }
+
     table {
       width: 100%;
       border-collapse: collapse;
       margin-top: 15px;
     }
+
     th {
       background-color: #e5e5e5;
       padding: 10px;
       text-align: left;
     }
+
     td {
       background-color: #fff;
       padding: 10px;
       border-bottom: 1px solid #ddd;
     }
+
     .mensaje {
       text-align: center;
       padding: 20px;
       color: #888;
     }
+
     tr:hover {
-      background-color: #f1f1f1;
+      background-color: #f9f9f9;
     }
-    button.generar {
+
+    .boton-generar {
       padding: 6px 12px;
-      background-color: #007acc;
-      border: none;
+      background-color: #007bff;
       color: white;
-      border-radius: 4px;
+      border: none;
+      border-radius: 5px;
       cursor: pointer;
+    }
+
+    .boton-generar:hover {
+      background-color: #0056b3;
+    }
+
+    .estado-ejecutado {
+      color: green;
+      font-weight: bold;
+    }
+
+    .estado-pendiente {
+      color: red;
+      font-weight: bold;
     }
   </style>
 </head>
 <body>
   <h1>Reposición de Pedido</h1>
-  <input type="text" id="buscador" placeholder="Buscar colegio, ID o solicitante..." />
+
+  <input type="text" id="buscador" placeholder="Buscar colegio o canal..." />
+  <select id="filtroEstado">
+    <option value="">-- Filtrar por estado --</option>
+    <option value="pendientes">Pendientes</option>
+    <option value="ejecutados">Ejecutados</option>
+  </select>
   <select id="filtroZona">
     <option value="">-- Filtrar por zona --</option>
     <option value="Lima">Lima</option>
@@ -72,48 +101,64 @@
       <tr>
         <th>Código Colegio</th>
         <th>Nombre Colegio</th>
+        <th>Canal</th>
         <th>Solicitante</th>
         <th>ID Pedido</th>
-        <th>Canal</th>
+        <th>Estado</th>
+        <th>Departamento</th>
         <th>Zona</th>
         <th>Acción</th>
       </tr>
     </thead>
     <tbody id="lista-reposicion">
-      <tr><td colspan="7" class="mensaje">Cargando datos...</td></tr>
+      <tr><td colspan="9" class="mensaje">Cargando reposiciones...</td></tr>
     </tbody>
   </table>
 
   <script>
-    let datosReposicion = [];
+    let todosLosRepos = [];
 
     fetch("http://localhost:8000/api/reposiciones")
       .then(res => res.json())
       .then(data => {
-        datosReposicion = data.map(p => {
-          const dpto = (p.T0__DPTOE_1 || "").toUpperCase();
-          const zona = (dpto.includes("LIMA") || dpto.includes("CALLAO")) ? "Lima" : "Provincia";
-          return { ...p, zona };
-        });
-        filtrarReposicion();
+        todosLosRepos = data
+          .filter(p =>
+            p.NMSTRUCT === "Generar pedido" &&
+            ["COLEGIO", "DISTRIBUIDOR"].includes(p.T0__CDV_1)
+          )
+          .map(p => {
+            const dpto = (p.T0__DPTOENT_1 || "").toUpperCase();
+            const zona = (dpto.includes("LIMA") || dpto.includes("CALLAO")) ? "Lima" : "Provincia";
+            return { ...p, zona };
+          });
+
+        filtrarReposiciones();
       })
-      .catch(err => {
-        document.getElementById("lista-reposicion").innerHTML = `<tr><td colspan="7" class="mensaje">Error al cargar los datos.</td></tr>`;
-        console.error("Error cargando reposiciones:", err);
+      .catch((error) => {
+        document.getElementById("lista-reposicion").innerHTML =
+          `<tr><td colspan="9" class="mensaje">Error al cargar las reposiciones.</td></tr>`;
+        console.error("Error:", error);
       });
 
-    document.getElementById("buscador").addEventListener("input", filtrarReposicion);
-    document.getElementById("filtroZona").addEventListener("change", filtrarReposicion);
+    document.getElementById("buscador").addEventListener("input", filtrarReposiciones);
+    document.getElementById("filtroEstado").addEventListener("change", filtrarReposiciones);
+    document.getElementById("filtroZona").addEventListener("change", filtrarReposiciones);
 
-    function filtrarReposicion() {
+    function filtrarReposiciones() {
       const texto = document.getElementById("buscador").value.toLowerCase();
-      const zonaSeleccionada = document.getElementById("filtroZona").value;
+      const filtroEstado = document.getElementById("filtroEstado").value;
+      const filtroZona = document.getElementById("filtroZona").value;
 
-      const filtrados = datosReposicion.filter(p => {
-        const contenido = `${p.T0__CCL_1} ${p.T0__NDC_1} ${p.IDPROCESS} ${p.T0__NOMSOL_1}`.toLowerCase();
-        const coincideTexto = contenido.includes(texto);
-        const coincideZona = !zonaSeleccionada || p.zona === zonaSeleccionada;
-        return coincideTexto && coincideZona;
+      const filtrados = todosLosRepos.filter(p => {
+        const textoFiltra = `${p.T0__CCL_1} ${p.T0__NDC_1} ${p.T0__CDV_1}`.toLowerCase();
+        const ejecutado = String(p.NMEXECUTEDACTION).trim() === "1";
+        const coincideTexto = textoFiltra.includes(texto);
+
+        if (filtroEstado === "ejecutados" && ejecutado) return false;
+        if (filtroEstado === "pendientes" && !ejecutado) return false;
+        if (filtroZona && p.zona.toLowerCase() !== filtroZona.toLowerCase()) return false;
+
+        return coincideTexto;
       });
 
       renderReposiciones(filtrados);
@@ -123,22 +168,37 @@
       const tbody = document.getElementById("lista-reposicion");
       tbody.innerHTML = "";
       if (data.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="7" class="mensaje">No hay coincidencias.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="9" class="mensaje">No hay coincidencias.</td></tr>`;
         return;
       }
+
       data.forEach(p => {
-        const tr = document.createElement("tr");
-        tr.innerHTML = `
+        const ejecutado = String(p.NMEXECUTEDACTION).trim() === "1";
+        const fila = document.createElement("tr");
+        fila.innerHTML = `
           <td>${p.T0__CCL_1}</td>
           <td>${p.T0__NDC_1}</td>
+          <td>${p.T0__CDV_1}</td>
           <td>${p.T0__NOMSOL_1}</td>
           <td>${p.IDPROCESS}</td>
-          <td>${p.T0__CDV_1}</td>
+          <td class="${ejecutado ? 'estado-pendiente' : 'estado-ejecutado'}">
+            ${ejecutado ? 'Pendiente' : 'Ejecutado'}
+          </td>
+          <td>${p.T0__DPTOENT_1 || '-'}</td>
           <td>${p.zona}</td>
-          <td><button class="generar" onclick="alert('Generar para: ${p.IDPROCESS}')">Generar</button></td>
+          <td>
+            <button class="boton-generar" onclick="generarReposicion(
+              '${p.T0__CCL_1}', '${p.T0__NDC_1}', '${p.T0__CDV_1}', '${p.T0__NOMSOL_1}', '${p.IDPROCESS}', '${p.T0__CDGOCL_1}', '${p.T0__RZSO_1}', '${p.T0__CODSOL_1}'
+            )">Generar</button>
+          </td>
         `;
-        tbody.appendChild(tr);
+        tbody.appendChild(fila);
       });
+    }
+
+    function generarReposicion(codcolegio, nombrecolegio, canal, vendedor, idprocess, codcliente, cliente, codvendedor) {
+      const url = `detalle_pedido.html?colegio=${encodeURIComponent(codcolegio)}&nombre=${encodeURIComponent(nombrecolegio)}&canal=${encodeURIComponent(canal)}&vendedor=${encodeURIComponent(vendedor)}&idprocess=${encodeURIComponent(idprocess)}&codcliente=${encodeURIComponent(codcliente)}&cliente=${encodeURIComponent(cliente)}&codvendedor=${encodeURIComponent(codvendedor)}`;
+      window.location.href = url;
     }
   </script>
 </body>
