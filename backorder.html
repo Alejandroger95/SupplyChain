@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <title>Back Order</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #f4f6f9;
+      padding: 20px;
+    }
+
+    h1 {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      color: #222;
+    }
+
+    h1::before {
+      content: "🧾";
+    }
+
+    input {
+      padding: 8px;
+      margin-bottom: 10px;
+      border-radius: 5px;
+      border: 1px solid #ccc;
+      width: 300px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 15px;
+    }
+
+    th {
+      background-color: #e5e5e5;
+      padding: 10px;
+      text-align: left;
+    }
+
+    td {
+      background-color: #fff;
+      padding: 10px;
+      border-bottom: 1px solid #ddd;
+    }
+
+    .mensaje {
+      text-align: center;
+      padding: 20px;
+      color: #888;
+    }
+
+    tr:hover {
+      background-color: #f9f9f9;
+    }
+
+    .disponible {
+      color: green;
+      font-weight: bold;
+    }
+
+    .nodisponible {
+      color: red;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>Back Order</h1>
+
+  <input type="text" id="buscador" placeholder="Buscar por colegio, código o producto..." />
+
+  <table>
+    <thead>
+      <tr>
+        <th>OPE</th>
+        <th>Código Colegio</th>
+        <th>Colegio</th>
+        <th>Código Producto</th>
+        <th>Producto</th>
+        <th>Cantidad</th>
+        <th>Inventario</th>
+        <th>Estado</th>
+      </tr>
+    </thead>
+    <tbody id="tabla-backorder">
+      <tr><td colspan="8" class="mensaje">Cargando datos...</td></tr>
+    </tbody>
+  </table>
+
+  <script>
+    let backorders = [];
+
+    fetch("http://localhost:8000/api/backorders")
+      .then(res => res.json())
+      .then(data => {
+        backorders = data;
+        renderBackorders(data);
+      })
+      .catch(err => {
+        document.getElementById("tabla-backorder").innerHTML =
+          `<tr><td colspan="8" class="mensaje">Error al cargar datos.</td></tr>`;
+        console.error(err);
+      });
+
+    document.getElementById("buscador").addEventListener("input", () => {
+      const texto = document.getElementById("buscador").value.toLowerCase();
+      const filtrados = backorders.filter(p =>
+        `${p.ope} ${p.cod_colegio} ${p.colegio} ${p.cod_producto} ${p.producto}`.toLowerCase().includes(texto)
+      );
+      renderBackorders(filtrados);
+    });
+
+    function renderBackorders(data) {
+      const tbody = document.getElementById("tabla-backorder");
+      tbody.innerHTML = "";
+
+      if (data.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="8" class="mensaje">No hay coincidencias.</td></tr>`;
+        return;
+      }
+
+      data.forEach(p => {
+        const fila = document.createElement("tr");
+        fila.innerHTML = `
+          <td>${p.ope}</td>
+          <td>${p.cod_colegio}</td>
+          <td>${p.colegio}</td>
+          <td>${p.cod_producto}</td>
+          <td>${p.producto}</td>
+          <td>${p.cantidad}</td>
+          <td>${p.inventario}</td>
+          <td class="${p.disponible ? 'disponible' : 'nodisponible'}">
+            ${p.disponible ? 'Disponible' : 'Sin stock'}
+          </td>
+        `;
+        tbody.appendChild(fila);
+      });
+    }
+  </script>
+
+</body>
+</html>

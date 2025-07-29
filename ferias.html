@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <title>Ferias</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #f4f6f9;
+      padding: 20px;
+    }
+
+    h1 {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      color: #222;
+    }
+
+    h1::before {
+      content: "🎪";
+    }
+
+    input, select {
+      padding: 8px;
+      margin-right: 10px;
+      border-radius: 5px;
+      border: 1px solid #ccc;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 15px;
+    }
+
+    th {
+      background-color: #e5e5e5;
+      padding: 10px;
+      text-align: left;
+    }
+
+    td {
+      background-color: #fff;
+      padding: 10px;
+      border-bottom: 1px solid #ddd;
+    }
+
+    .mensaje {
+      text-align: center;
+      padding: 20px;
+      color: #888;
+    }
+
+    tr:hover {
+      background-color: #f9f9f9;
+    }
+
+    .boton-generar {
+      padding: 6px 12px;
+      background-color: #007bff;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+
+    .boton-generar:hover {
+      background-color: #0056b3;
+    }
+
+    .estado-ejecutado {
+      color: green;
+      font-weight: bold;
+    }
+
+    .estado-pendiente {
+      color: red;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+  <h1>Ferias</h1>
+
+  <input type="text" id="buscador" placeholder="Buscar colegio o promotor..." />
+  <select id="filtroEstado">
+    <option value="">-- Filtrar por estado --</option>
+    <option value="pendientes">Pendientes</option>
+    <option value="ejecutados">Ejecutados</option>
+  </select>
+  <select id="filtroZona">
+    <option value="">-- Filtrar por zona --</option>
+    <option value="Lima">Lima</option>
+    <option value="Provincia">Provincia</option>
+  </select>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Identificador</th>
+        <th>Código Colegio</th>
+        <th>Colegio</th>
+        <th>Departamento</th>
+        <th>Provincia</th>
+        <th>Distrito</th>
+        <th>Código Promotor</th>
+        <th>Estado</th>
+        <th>Acción</th>
+      </tr>
+    </thead>
+    <tbody id="tabla-ferias">
+      <tr><td colspan="9" class="mensaje">Cargando ferias...</td></tr>
+    </tbody>
+  </table>
+
+  <script>
+    let ferias = [];
+
+    fetch("http://localhost:8000/api/ferias")
+      .then(res => res.json())
+      .then(data => {
+        ferias = data.map(p => {
+          const dpto = (p.T0__DDC_1 || "").toUpperCase();
+          const zona = (dpto.includes("LIMA") || dpto.includes("CALLAO")) ? "Lima" : "Provincia";
+          return { ...p, zona };
+        });
+        filtrarFerias();
+      })
+      .catch(err => {
+        document.getElementById("tabla-ferias").innerHTML =
+          `<tr><td colspan="9" class="mensaje">Error al cargar datos.</td></tr>`;
+        console.error(err);
+      });
+
+    document.getElementById("buscador").addEventListener("input", filtrarFerias);
+    document.getElementById("filtroEstado").addEventListener("change", filtrarFerias);
+    document.getElementById("filtroZona").addEventListener("change", filtrarFerias);
+
+    function filtrarFerias() {
+      const texto = document.getElementById("buscador").value.toLowerCase();
+      const estado = document.getElementById("filtroEstado").value;
+      const zona = document.getElementById("filtroZona").value;
+
+      const filtradas = ferias.filter(p => {
+        const textoMatch = `${p.IDPROCESS} ${p.T0__CDC_0} ${p.T0__NDC_1} ${p.T0__CDP_0}`.toLowerCase().includes(texto);
+        const ejecutado = p.NMEXECUTEDACTION === 1;
+
+        if (estado === "pendientes" && ejecutado) return false;
+        if (estado === "ejecutados" && !ejecutado) return false;
+        if (zona && p.zona.toLowerCase() !== zona.toLowerCase()) return false;
+
+        return textoMatch;
+      });
+
+      renderFerias(filtradas);
+    }
+
+    function renderFerias(data) {
+      const tbody = document.getElementById("tabla-ferias");
+      tbody.innerHTML = "";
+
+      if (data.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="9" class="mensaje">No hay coincidencias.</td></tr>`;
+        return;
+      }
+
+      data.forEach(p => {
+        const ejecutado = p.NMEXECUTEDACTION === 1;
+        const fila = document.createElement("tr");
+
+        fila.innerHTML = `
+          <td>${p.IDPROCESS}</td>
+          <td>${p.T0__CDC_0}</td>
+          <td>${p.T0__NDC_1}</td>
+          <td>${p.T0__DDC_1}</td>
+          <td>${p.T0__PDC_1}</td>
+          <td>${p.T0__DTDC_1}</td>
+          <td>${p.T0__CDP_0}</td>
+          <td class="${ejecutado ? 'estado-ejecutado' : 'estado-pendiente'}">
+            ${ejecutado ? 'Ejecutado' : 'Pendiente'}
+          </td>
+          <td>
+            <button class="boton-generar" onclick="generarFeria(${JSON.stringify(p).replace(/"/g, '&quot;')})">
+              Generar
+            </button>
+          </td>
+        `;
+        tbody.appendChild(fila);
+      });
+    }
+
+    function generarFeria(data) {
+      const params = new URLSearchParams();
+      params.set("idprocess", data.IDPROCESS);
+      params.set("codcolegio", data.T0__CDC_0);
+      params.set("colegio", data.T0__NDC_1);
+      params.set("departamento", data.T0__DDC_1);
+      params.set("provincia", data.T0__PDC_1);
+      params.set("distrito", data.T0__DTDC_1);
+      params.set("cod_promotor", data.T0__CDP_0);
+      params.set("contacto", data.T0__REFE_1 || "");
+      params.set("telefono", data.T0__CREFE_1 || "");
+      params.set("codigo_departamento", data.codigo_departamento);
+      params.set("codigo_provincia", data.codigo_provincia || "");
+      params.set("codigo_distrito", data.codigo_distrito || "");
+      
+
+      window.location.href = "detalle_ferias.html?" + params.toString();
+    }
+  </script>
+
+</body>
+</html>

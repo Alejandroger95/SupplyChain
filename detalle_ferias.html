@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Detalle de Feria</title>
+  <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+  <style>
+    body {
+      padding: 20px;
+      background-color: #f8f9fa;
+    }
+    table {
+      margin-top: 20px;
+    }
+    th, td {
+      vertical-align: middle !important;
+    }
+    #infoFeria {
+      margin-top: -10px;
+      margin-bottom: 20px;
+      font-size: 14px;
+      color: #555;
+    }
+  </style>
+</head>
+<body>
+  <h4><strong>Detalle de la Feria</strong></h4>
+
+  <div id="infoFeria"></div>
+
+  <div class="form-group">
+    <input type="text" id="searchInput" class="form-control" placeholder="Buscar por grado, producto, nivel educativo o mercado">
+  </div>
+
+  <div class="mb-2">
+    <button onclick="filtrarPedidos()" class="btn btn-primary">Filtrar</button>
+    <button onclick="marcarTodo()" class="btn btn-success">Marcar todo</button>
+    <button onclick="desmarcarTodo()" class="btn btn-danger">Desmarcar todo</button>
+  </div>
+
+  <div class="table-responsive">
+    <table class="table table-bordered table-striped">
+      <thead class="thead-light">
+        <tr>
+          <th><input type="checkbox" id="checkAll" onclick="toggleTodos()"></th>
+          <th>Mercado</th>
+          <th>Línea de Negocio</th>
+          <th>Nivel Educativo</th>
+          <th>Grado</th>
+          <th>Cod Producto</th>
+          <th>Producto</th>
+          <th>Descuento</th>
+          <th>Población</th>
+          <th>TC %</th>
+          <th>Cantidad</th>
+          <th>Inventario</th>
+        </tr>
+      </thead>
+      <tbody id="feriaBody">
+        <tr><td colspan="11">Cargando datos...</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <script>
+    function getParam(nombre) {
+      return new URLSearchParams(window.location.search).get(nombre);
+    }
+
+    const codcolegio = getParam("codcolegio");
+    const idprocess = getParam("idprocess");
+    const colegio = getParam("colegio");
+    const departamento = getParam("departamento");
+    const provincia = getParam("provincia");
+    const distrito = getParam("distrito");
+    const cod_promotor = getParam("cod_promotor");
+    const contacto = getParam("contacto");
+    const telefono = getParam("telefono");
+
+    document.getElementById("infoFeria").innerHTML = `
+      <strong>OPE:</strong> ${idprocess || '-'} |
+      <strong>Código Colegio:</strong> ${codcolegio || '-'} |
+      <strong>Colegio:</strong> ${colegio || '-'}<br>
+      <strong>Contacto:</strong> ${contacto || '-'} |
+      <strong>Teléfono:</strong> ${telefono || '-'}<br>
+      <strong>Cod Promotor:</strong> ${cod_promotor || '-'}<br>
+      <strong>Ubicación:</strong> ${departamento || '-'} / ${provincia || '-'} / ${distrito || '-'}
+    `;
+
+    let pedidosOriginal = [];
+
+    function toggleTodos() {
+      const checked = document.getElementById("checkAll").checked;
+      document.querySelectorAll('.filaFeria input[type="checkbox"]').forEach(cb => cb.checked = checked);
+    }
+
+    function marcarTodo() {
+      document.querySelectorAll('.filaFeria input[type="checkbox"]').forEach(cb => cb.checked = true);
+    }
+
+    function desmarcarTodo() {
+      document.querySelectorAll('.filaFeria input[type="checkbox"]').forEach(cb => cb.checked = false);
+    }
+
+    function filtrarPedidos() {
+      const filtro = document.getElementById("searchInput").value.toLowerCase();
+      const body = document.getElementById("feriaBody");
+      body.innerHTML = "";
+
+      const filtrados = pedidosOriginal.filter(p =>
+        Object.values(p).some(v => (v || "").toString().toLowerCase().includes(filtro))
+      );
+
+      if (filtrados.length === 0) {
+        body.innerHTML = '<tr><td colspan="11">No se encontraron resultados.</td></tr>';
+        return;
+      }
+
+      filtrados.forEach((p, i) => {
+        const exceso = Number(p.Cantidad_Solicitada) > Number(p.Inventario || 0); 
+        const fila = `<tr class="filaFeria" style="${exceso ? 'background-color:#fce4ec;' : ''}">
+          <td><input type="checkbox" value="${i}"></td>
+          <td>${p.Mercado || ''}</td>
+          <td>${p.Linea_Negocio || ''}</td>
+          <td>${p.NivelEducativo || ''}</td>
+          <td>${p.Grado || ''}</td>
+          <td>${p.Codigo_Nav_Santillana || ''}</td>
+          <td>${p.Producto || ''}</td>
+          <td>${p.Descuento || ''}</td>
+          <td>${p.Poblacion || ''}</td>
+          <td>${p.Tasa_Compra || ''}</td>
+          <td ${exceso ? 'style="color:red; font-weight:bold"' : ''}>${p.Cantidad_Solicitada}</td>
+          <td>${p.Inventario ?? '-'}</td>
+        </tr>`;
+        body.innerHTML += fila;
+      });
+    }
+
+    function cargarPedidos() {
+      if (!codcolegio) {
+        document.getElementById("feriaBody").innerHTML = '<tr><td colspan="11">Falta código de colegio.</td></tr>';
+        return;
+      }
+
+      fetch(`http://localhost:8000/api/pedidosferia?codigo_colegio=${codcolegio}`)
+        .then(response => {
+          if (!response.ok) throw new Error("Error al cargar pedidos.");
+          return response.json();
+        })
+        .then(data => {
+          pedidosOriginal = data;
+          filtrarPedidos();
+        })
+        .catch(err => {
+          document.getElementById("feriaBody").innerHTML = `<tr><td colspan="11">Error al cargar pedidos.</td></tr>`;
+        });
+    }
+
+    window.onload = function () {
+        cargarPedidos();
+
+        // Filtro en tiempo real mientras escribe
+        document.getElementById("searchInput").addEventListener("input", filtrarPedidos);
+    };
+  </script>
+</body>
+</html>

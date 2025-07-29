@@ -55,6 +55,7 @@
           <th>Población</th>
           <th>TC %</th>
           <th>Cantidad</th>
+          <th>Inventario</th>
         </tr>
       </thead>
       <tbody id="pedidoBody">
@@ -113,7 +114,9 @@
       }
 
       filtrados.forEach((p, i) => {
-        const fila = `<tr class="filaPedido">
+
+        const exceso = Number(p.Cantidad_Solicitada) > Number(p.Inventario || 0);  
+        const fila = `<tr class="filaPedido" style="${exceso ? 'background-color:#fce4ec;' : ''}">
           <td><input type="checkbox" value="${i}"></td>
           <td>${p.Mercado}</td>
           <td>${p.Linea_Negocio}</td>
@@ -124,7 +127,8 @@
           <td>${p.Descuento}</td>
           <td>${p.Poblacion}</td>
           <td>${p.Tasa_Compra}</td>
-          <td>${p.Cantidad_Solicitada}</td>
+          <td ${exceso ? 'style="color:red; font-weight:bold"' : ''}>${p.Cantidad_Solicitada}</td>
+          <td>${p.Inventario ?? '-'}</td>
         </tr>`;
         body.innerHTML += fila;
       });
@@ -187,7 +191,12 @@
         });
     }
 
-    window.onload = cargarPedidos;
+    window.onload = function () {
+      cargarPedidos();
+
+      // Filtro en tiempo real mientras escribe
+      document.getElementById("searchInput").addEventListener("input", filtrarPedidos);
+    };
   </script>
 </body>
 </html>
