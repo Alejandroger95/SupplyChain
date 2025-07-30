@@ -36,6 +36,7 @@
     <button onclick="filtrarPedidos()" class="btn btn-primary">Filtrar</button>
     <button onclick="marcarTodo()" class="btn btn-success">Marcar todo</button>
     <button onclick="desmarcarTodo()" class="btn btn-danger">Desmarcar todo</button>
+    <button onclick="descargarSeleccionados()" class="btn btn-secondary">Descargar Seleccionados</button>
   </div>
 
   <div class="table-responsive">
@@ -76,6 +77,10 @@
     const cod_promotor = getParam("cod_promotor");
     const contacto = getParam("contacto");
     const telefono = getParam("telefono");
+    const direccion = getParam("direccion");
+    const codigo_departamento = getParam("codigo_departamento");
+    const codigo_provincia = getParam("codigo_provincia");
+    const codigo_distrito = getParam("codigo_distrito");
 
     document.getElementById("infoFeria").innerHTML = `
       <strong>OPE:</strong> ${idprocess || '-'} |
@@ -84,7 +89,7 @@
       <strong>Contacto:</strong> ${contacto || '-'} |
       <strong>Teléfono:</strong> ${telefono || '-'}<br>
       <strong>Cod Promotor:</strong> ${cod_promotor || '-'}<br>
-      <strong>Ubicación:</strong> ${departamento || '-'} / ${provincia || '-'} / ${distrito || '-'}
+      <strong>Ubicación:</strong> ${departamento || '-'} / ${provincia || '-'} / ${distrito || '-'} / ${direccion || '-'}
     `;
 
     let pedidosOriginal = [];
@@ -155,6 +160,55 @@
           document.getElementById("feriaBody").innerHTML = `<tr><td colspan="11">Error al cargar pedidos.</td></tr>`;
         });
     }
+    
+    function descargarSeleccionados() {
+      const seleccionados = Array.from(document.querySelectorAll('.filaFeria input[type="checkbox"]:checked'))
+        .map(cb => pedidosOriginal[parseInt(cb.value)]);
+
+      if (seleccionados.length === 0) {
+        alert("Selecciona al menos un ítem para descargar.");
+        return;
+      }
+
+      // Obtener parámetros de cabecera desde la URL
+      const getParam = nombre => new URLSearchParams(window.location.search).get(nombre);
+      const payload = {
+        pedidos: seleccionados,
+        idprocess: getParam("idprocess"),
+        codcliente: getParam("codcolegio"),
+        cliente: getParam("colegio"),
+        codvendedor: getParam("cod_promotor"),
+        vendedor: getParam("contacto"),
+        telefono: getParam("telefono"),
+        direccion: getParam("direccion"),
+        departamento: getParam("departamento"),
+        provincia: getParam("provincia"),
+        distrito: getParam("distrito"),
+        codigo_departamento: getParam("codigo_departamento"),
+        codigo_provincia: getParam("codigo_provincia"),
+        codigo_distrito: getParam("codigo_distrito")
+      };
+
+      fetch("http://localhost:8000/api/descargar_placeholder_feria", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      })
+      .then(resp => {
+        if (!resp.ok) throw new Error("Error al generar archivo.");
+        return resp.blob();
+      })
+      .then(blob => {
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = "pedido_santillana_feria.zip";
+        a.click();
+      })
+      .catch(err => alert("Error: " + err.message));
+    }
+
+
 
     window.onload = function () {
         cargarPedidos();

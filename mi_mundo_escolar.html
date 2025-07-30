@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Mi Mundo Escolar</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', sans-serif;
+            background: #f4f7f9;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        h1 {
+            margin-top: 40px;
+            color: #2c3e50;
+            text-align: center;
+        }
+
+        .image-container {
+            margin: 30px 0;
+        }
+
+        .image-container img {
+            width: 300px;
+            max-width: 90%;
+        }
+
+        .button-container {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            width: 300px;
+            margin-bottom: 40px;
+        }
+
+        button {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background-color: #0077cc;
+            color: white;
+            border: none;
+            padding: 15px;
+            font-size: 16px;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+
+        button:hover {
+            background-color: #005fa3;
+        }
+
+        button span {
+            margin-left: 10px;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Mi Mundo Escolar</h1>
+
+    <div class="image-container">
+        <img src="https://cdn-icons-png.flaticon.com/512/854/854894.png" alt="Escolar">
+    </div>
+
+    <div class="button-container">
+        <button onclick="location.href='didactico.html'">📚 <span>Didáctico</span></button>
+        <button onclick="location.href='suscripcion.html'">🔐 <span>Suscripción</span></button>
+    </div>
+
+</body>
+</html>
