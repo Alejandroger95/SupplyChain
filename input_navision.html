@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Supply Chain - Dashboard</title>
+    <title>Input Navision</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <style>
         body {
@@ -13,23 +13,36 @@
             display: flex;
             flex-direction: column;
             align-items: center;
-            justify-content: center;
-            height: 100vh;
+            min-height: 100vh;
         }
 
         h1 {
+            margin-top: 40px;
             color: #2c3e50;
-            margin-bottom: 30px;
+            text-align: center;
+        }
+
+        .image-container {
+            margin: 30px 0;
+        }
+
+        .image-container img {
+            width: 300px;
+            max-width: 90%;
         }
 
         .button-container {
             display: flex;
             flex-direction: column;
             gap: 20px;
-            width: 250px;
+            width: 300px;
+            margin-bottom: 40px;
         }
 
         button {
+            display: flex;
+            align-items: center;
+            justify-content: center;
             background-color: #0077cc;
             color: white;
             border: none;
@@ -43,15 +56,24 @@
         button:hover {
             background-color: #005fa3;
         }
+
+        button span {
+            margin-left: 10px;
+        }
     </style>
 </head>
 <body>
 
-    <h1>Supply Chain</h1>
+    <h1>Input Navision</h1>
+
+    <div class="image-container">
+        <img src="https://cdn-icons-png.flaticon.com/512/181/181611.png" alt="Input Navision">
+    </div>
+
     <div class="button-container">
-        <button onclick="location.href='operaciones.html'">📦 Operaciones</button>
-        <button onclick="location.href='ecommerce.html'">🛒 E-Commerce</button>
-        <button onclick="location.href='input_navision.html'">💾 Input Navision</button>
+        <button onclick="location.href='librerias_nav.html'">📚 <span>Librerías Nav</span></button>
+        <button onclick="location.href='ferias_nav.html'">🎪 <span>Ferias Nav</span></button>
+        <button onclick="location.href='agente_nav.html'">👤 <span>Agente Nav</span></button>
     </div>
 
 </body>

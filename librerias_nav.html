@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Librerías Nav</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+  <style>
+    body {
+      background-color: #f1f4f9;
+    }
+    h2 {
+      text-align: center;
+      margin: 20px 0;
+      font-weight: bold;
+      color: #2c3e50;
+    }
+    .container {
+      max-width: 100%;
+      padding: 0 30px;
+    }
+    .table thead th {
+      background-color: #007bff;
+      color: white;
+      text-align: center;
+      vertical-align: middle;
+    }
+    .table tbody td {
+      padding: 4px 8px;
+      font-size: 13px;
+      vertical-align: middle;
+    }
+    .top-controls {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+    .top-controls input {
+      width: 300px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container mt-4">
+    <h2>Librerías Nav</h2>
+    <div class="top-controls mb-3">
+      <input type="text" id="searchBox" class="form-control" placeholder="Buscar por cualquier campo...">
+      <button id="btn-descargar" class="btn btn-primary">Descargar</button>
+    </div>
+    <table id="tabla" class="table table-striped table-bordered w-100">
+      <thead></thead>
+      <tbody></tbody>
+    </table>
+    <div id="paginacion" class="d-flex flex-wrap gap-2 justify-content-center mt-3"></div>
+  </div>
+
+  <script>
+    let currentPage = 1;
+    const limit = 50;
+    let currentQuery = "";
+
+    async function cargarDatos(page = 1, query = "") {
+      const response = await fetch(`http://localhost:8000/api/navision/librerias?page=${page}&limit=${limit}&query=${encodeURIComponent(query)}`);
+      const resultado = await response.json();
+
+      const thead = document.querySelector("#tabla thead");
+      const tbody = document.querySelector("#tabla tbody");
+
+      if (!resultado.data || resultado.data.length === 0) {
+        thead.innerHTML = "";
+        tbody.innerHTML = "<tr><td colspan='100%'>No se encontraron resultados.</td></tr>";
+        document.getElementById("paginacion").innerHTML = "";
+        return;
+      }
+
+      const columnas = Object.keys(resultado.data[0]);
+      thead.innerHTML = "<tr>" + columnas.map(col => `<th>${col}</th>`).join('') + "</tr>";
+      tbody.innerHTML = resultado.data.map(row =>
+        "<tr>" + columnas.map(col => `<td>${row[col] ?? ""}</td>`).join('') + "</tr>"
+      ).join('');
+
+      renderPaginacion(resultado.total, resultado.page);
+    }
+
+    function renderPaginacion(total, pageActual) {
+        const totalPages = Math.ceil(total / limit);
+        const paginacion = document.getElementById("paginacion");
+        paginacion.innerHTML = "";
+
+        const maxVisible = 7;
+        const buttons = [];
+
+        const addButton = (label, page, active = false, disabled = false) => {
+            const btn = document.createElement("button");
+            btn.textContent = label;
+            btn.className = "btn btn-sm " + (active ? "btn-primary" : "btn-outline-primary");
+            btn.disabled = disabled;
+            btn.onclick = () => {
+            currentPage = page;
+            cargarDatos(currentPage, currentQuery);
+            };
+            paginacion.appendChild(btn);
+        };
+
+        if (pageActual > 1) addButton("«", pageActual - 1);
+
+        if (pageActual > 3) {
+            addButton("1", 1);
+            if (pageActual > 4) {
+            const dots = document.createElement("span");
+            dots.textContent = "...";
+            dots.className = "mx-2";
+            paginacion.appendChild(dots);
+            }
+        }
+
+        const start = Math.max(1, pageActual - 2);
+        const end = Math.min(totalPages, pageActual + 2);
+
+        for (let i = start; i <= end; i++) {
+            addButton(i, i, i === pageActual);
+        }
+
+        if (pageActual < totalPages - 2) {
+            if (pageActual < totalPages - 3) {
+            const dots = document.createElement("span");
+            dots.textContent = "...";
+            dots.className = "mx-2";
+            paginacion.appendChild(dots);
+            }
+            addButton(totalPages, totalPages);
+        }
+
+        if (pageActual < totalPages) addButton("»", pageActual + 1);
+    }
+
+    document.getElementById("searchBox").addEventListener("keyup", function () {
+      currentQuery = this.value;
+      currentPage = 1;
+      cargarDatos(currentPage, currentQuery);
+    });
+
+    document.getElementById("btn-descargar").addEventListener("click", function () {
+      fetch("http://localhost:8000/api/navision/librerias/descargar")
+        .then(res => res.blob())
+        .then(blob => {
+          const url = window.URL.createObjectURL(blob);
+          const a = document.createElement("a");
+          const fecha = new Date().toISOString().slice(0, 16).replace(/[-T:]/g, "_");
+          a.href = url;
+          a.download = `librerias_nav_${fecha}.xlsx`;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+        })
+        .catch(err => alert("Error al descargar archivo"));
+    });
+
+    window.onload = () => cargarDatos(currentPage, currentQuery);
+  </script>
+</body>
+</html>
